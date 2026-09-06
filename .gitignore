@@ -1,0 +1,9 @@
+node_modules/
+dist/
+release/
+.package-staging/
+.package-build/
+*.log
+.DS_Store
+coverage/
+qa/
