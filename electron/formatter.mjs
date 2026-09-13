@@ -296,7 +296,13 @@ async function formatExternal(content, language, filePath, tabSize, formatter, p
     const output = await runProcess(formatter.executable, args, content, temporary, pathValue);
     return { content: preserveLineEndings(output, ending), formatter: formatter.label };
   } finally {
-    await rm(temporary, { recursive: true, force: true });
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try { await rm(temporary, { recursive: true, force: true }); break; }
+      catch (error) {
+        if (process.platform !== 'win32' || !['EBUSY', 'EPERM', 'ENOTEMPTY'].includes(error.code) || attempt === 7) throw error;
+        await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
+      }
+    }
   }
 }
 

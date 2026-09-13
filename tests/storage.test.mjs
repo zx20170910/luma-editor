@@ -21,7 +21,7 @@ test('UTF-8 BOM round-trips while mode is preserved by atomic save', async t => 
   const saved = await saveTextFile({ filePath: file, content: '更新\r\n', bom: opened.bom, expectedMtime: opened.mtime });
   assert.equal(saved.content, '更新\r\n');
   assert.equal(await fs.readFile(file, 'utf8'), '\uFEFF更新\r\n');
-  assert.equal((await fs.stat(file)).mode & 0o777, 0o640);
+  if (process.platform !== 'win32') assert.equal((await fs.stat(file)).mode & 0o777, 0o640);
   assert.deepEqual(await fs.readdir(dir), ['notes.md']);
 });
 
@@ -79,7 +79,7 @@ test('session writes are debounced, serialized and explicitly flushed', async t 
   store.schedule({ draft: 'last' });
   await Promise.all([flushing, store.flush()]);
   assert.deepEqual(await readJSON(file), { draft: 'last' });
-  assert.equal((await fs.stat(file)).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal((await fs.stat(file)).mode & 0o777, 0o600);
 });
 
 test('authorized draft metadata survives a removed parent while actual I/O remains guarded', async t => {
