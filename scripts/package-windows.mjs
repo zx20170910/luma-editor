@@ -94,11 +94,11 @@ const baseConfig = {
 
 try {
   if (process.platform === 'win32') {
-    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget(['nsis'], Arch.x64), config: baseConfig });
-    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget(['portable'], Arch.x64), config: { ...baseConfig, win: { ...baseConfig.win, target: [{ target: 'portable', arch: ['x64'] }] }, portable: { artifactName: 'Luma-Editor-${version}-Portable-${arch}.${ext}' } } });
+    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget(['nsis'], Arch.x64), config: baseConfig, publish: 'never' });
+    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget(['portable'], Arch.x64), config: { ...baseConfig, win: { ...baseConfig.win, target: [{ target: 'portable', arch: ['x64'] }] }, portable: { artifactName: 'Luma-Editor-${version}-Portable-${arch}.${ext}' } }, publish: 'never' });
     console.log(`Packaged Windows x64 installers in ${outputs}; included ${copied.size} runtime packages.`);
   } else {
-    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget(['dir'], Arch.x64), config: { ...baseConfig, win: { ...baseConfig.win, target: ['dir'] } } });
+    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget(['dir'], Arch.x64), config: { ...baseConfig, win: { ...baseConfig.win, target: ['dir'] } }, publish: 'never' });
     console.warn('当前主机不是 Windows，已完成 Windows x64 运行目录构建；NSIS 和 portable 安装器由 GitHub Actions 的 Windows runner 生成。');
   }
 } finally {
