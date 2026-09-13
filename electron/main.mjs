@@ -7,6 +7,7 @@ import { formatDocument, getFormatterStatus, validateExternalFormatters } from '
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 app.setName('Luma Editor');
+if (process.platform === 'win32') app.setAppUserModelId('com.luma.editor');
 if (!app.isPackaged && process.env.LUMA_USER_DATA) {
   if (!path.isAbsolute(process.env.LUMA_USER_DATA)) throw new Error('测试会话目录必须使用绝对路径。');
   app.setPath('userData', process.env.LUMA_USER_DATA);
@@ -209,7 +210,8 @@ function installMenu() {
 async function createWindow() {
   rendererReady = false;
   closeApproved = false;
-  window = new BrowserWindow({ width: 1440, height: 920, minWidth: 900, minHeight: 600, title: 'Luma Editor', backgroundColor: '#111419', titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 18 }, show: false,
+  window = new BrowserWindow({ width: 1440, height: 920, minWidth: 900, minHeight: 600, title: 'Luma Editor', backgroundColor: '#111419', show: false,
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 18 } } : {}),
     webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, allowRunningInsecureContent: false },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

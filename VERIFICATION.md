@@ -1,6 +1,6 @@
 # Luma Editor 1.0.0 验证记录
 
-验证日期：2026-09-06。环境：macOS 26.6.2，Apple arm64。
+验证日期：2026-09-13。环境：macOS 26.6.2，Apple arm64；Windows 11 x64 构建通过 GitHub Actions `windows-latest` 执行。
 
 ## 已执行并通过
 
@@ -11,6 +11,7 @@
 | 真实 Electron 界面流程 | 13 项通过 | 编辑/实时预览、格式化、撤销重做、保存、目录刷新、主题、快速打开、错误保护、崩溃恢复、取消/丢弃关闭、900×650 布局、正常退出 |
 | 最终应用包中的格式化 | 12 项通过 | JavaScript、TypeScript、JSON、Java、PHP、XML、TOML、SQL、C、C++、C#、Swift |
 | 原生 macOS 保存流程 | 通过 | 最终 `.app` 新建文档、输入中文及 Markdown 任务列表、系统保存窗口选择目录、写入磁盘、自动识别 Markdown、预览复核 |
+| Windows 11 打包配置 | 已配置 | `npm run package:win` 生成 x64 NSIS 安装器和便携版；GitHub Actions 在 Windows runner 执行 npm test 与打包 |
 
 真实界面流程测试记录的页面错误和控制台错误均为 0。最终应用包的格式化检查也没有页面错误。
 

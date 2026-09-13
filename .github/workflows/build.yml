@@ -1,0 +1,49 @@
+name: Build Luma Editor
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Windows 11 x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luma-editor-windows-x64
+          path: release-win/*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  build-macos:
+    name: macOS arm64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package
+      - run: ditto -c -k --sequesterRsrc --keepParent "release/Luma Editor.app" "release/Luma-Editor-macOS-arm64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luma-editor-macos-arm64
+          path: release/Luma-Editor-macOS-arm64.zip
+          if-no-files-found: error
+          retention-days: 30

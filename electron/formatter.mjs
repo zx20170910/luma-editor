@@ -110,10 +110,16 @@ export function validateExternalFormatters(value) {
 function formatterPath() {
   // Finder-launched applications do not inherit an interactive shell's PATH.
   // Ignore relative/empty entries so opening a folder cannot shadow a formatter.
+  const windowsPaths = process.platform === 'win32' ? [
+    process.env.ProgramFiles ? join(process.env.ProgramFiles, 'Git', 'bin') : '',
+    process.env.ProgramFiles ? join(process.env.ProgramFiles, 'LLVM', 'bin') : '',
+    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'Programs', 'Python', 'Python312', 'Scripts') : '',
+  ] : [];
   return [...new Set([
     '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin',
     '/Library/Developer/CommandLineTools/usr/bin',
-    ...(process.env.PATH ?? '').split(delimiter),
+    ...windowsPaths,
+    ...(process.env.PATH ?? process.env.Path ?? '').split(delimiter),
   ].filter((part) => isAbsolute(part)))].join(delimiter);
 }
 

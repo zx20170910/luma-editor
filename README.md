@@ -4,9 +4,9 @@
 
 ## 开始使用
 
-双击同目录下的 **Luma Editor.app**。也可以将它拖入「应用程序」文件夹，之后从启动台或 Spotlight 打开。应用已包含运行环境，无须安装 Node.js。
+macOS 用户双击同目录下的 **Luma Editor.app**，也可以将它拖入「应用程序」文件夹。Windows 11 用户运行 `Luma-Editor-1.0.0-Setup-x64.exe`，按安装向导选择目录；没有管理员权限时可安装到当前用户目录。应用已包含运行环境，无须安装 Node.js。
 
-本次提供的是 **macOS Apple 芯片（arm64）版本**，已在这台 macOS 26.6.2 电脑上运行验证。它是本地构建的应用，未进行 Apple 开发者公证，尚未验证 Intel Mac 或其他系统。
+本次提供 macOS Apple 芯片（arm64）和 Windows 11（x64）构建。Windows 安装器使用 Electron 的 NSIS 用户级安装模式，另提供不写入系统的便携版 `Luma-Editor-1.0.0-Portable-x64.exe`。macOS 版本已在 Apple arm64 电脑上运行验证；Windows 构建由 GitHub Actions 在 `windows-latest` 生成，未进行代码签名，因此首次运行可能显示 SmartScreen 提示。
 
 首次启动会打开两个可编辑示例：「欢迎.md」和「示例.ts」。它们属于本地草稿，按 ⌘ S 可以保存到你选择的位置。
 
@@ -21,21 +21,21 @@
 
 | 操作 | 快捷键 |
 | --- | --- |
-| 新建文件 | ⌘ N |
-| 打开文件 | ⌘ O |
-| 打开文件夹 | ⇧ ⌘ O |
-| 保存 / 另存为 | ⌘ S / ⇧ ⌘ S |
-| 关闭标签页 | ⌘ W |
-| 快速打开 | ⌘ P |
-| 命令面板 | ⇧ ⌘ P |
-| 格式化文档 | ⇧ ⌥ F |
-| Markdown 预览 | ⇧ ⌘ M |
-| 查找 / 替换 | ⌘ F / ⌥ ⌘ F |
-| 切换文件侧栏 | ⌘ B |
-| 选中下一个相同单词 | ⌘ D |
-| 切换行注释 | ⌘ / |
-| 撤销 / 重做 | ⌘ Z / ⇧ ⌘ Z |
-| 设置 | ⌘ , |
+| 新建文件 | ⌘ N / Ctrl N |
+| 打开文件 | ⌘ O / Ctrl O |
+| 打开文件夹 | ⇧ ⌘ O / Ctrl ⇧ O |
+| 保存 / 另存为 | ⌘ S / Ctrl S；⇧ ⌘ S / Ctrl ⇧ S |
+| 关闭标签页 | ⌘ W / Ctrl W |
+| 快速打开 | ⌘ P / Ctrl P |
+| 命令面板 | ⇧ ⌘ P / Ctrl ⇧ P |
+| 格式化文档 | ⇧ ⌥ F / Alt Shift F |
+| Markdown 预览 | ⇧ ⌘ M / Ctrl ⇧ M |
+| 查找 / 替换 | ⌘ F / Ctrl F；⌥ ⌘ F / Ctrl Alt F |
+| 切换文件侧栏 | ⌘ B / Ctrl B |
+| 选中下一个相同单词 | ⌘ D / Ctrl D |
+| 切换行注释 | ⌘ / / Ctrl / |
+| 撤销 / 重做 | ⌘ Z / Ctrl Z；⇧ ⌘ Z / Ctrl Shift Z |
+| 设置 | ⌘ , / Ctrl , |
 
 点击右下角语言名称可以手动选择语言。新建的纯文本在保存为 `.java`、`.json`、`.md` 等文件后会自动识别。代码缩略图在 Markdown 分屏预览时自动隐藏，为正文留出宽度。
 
@@ -65,7 +65,7 @@ Vue 默认使用 HTML 高亮和 Vue 格式化；JSX/TSX 使用相应的 JavaScri
 
 ## 文件、草稿与预览
 
-文档不会上传服务器。应用不内置遥测、远程代码执行、依赖自动安装或自动更新。
+文档不会上传服务器。应用不内置遥测、远程代码执行、依赖自动安装或自动更新。Windows 用户数据保存在 `%APPDATA%\\Luma Editor\\`，macOS 用户数据保存在 `~/Library/Application Support/Luma Editor/`。
 
 保存使用同目录临时文件替换，并保留现有文件权限和 UTF-8 BOM。检测到磁盘文件被其他程序修改或删除时，需要明确选择是否覆盖。
 
@@ -87,6 +87,6 @@ npm start
 
 `npm test` 执行格式化与存储测试。`node scripts/smoke.mjs` 用临时文件和隔离会话启动真正的 Electron 窗口，验证核心编辑流程；原生文件选择和确认框在自动化脚本中使用返回值替身。
 
-`npm run package` 构建 macOS 应用并写到源码目录下的 `release/`。可通过 `LUMA_OUTPUT_DIR` 指定其他输出目录。所有依赖版本已锁定，应用运行时不加载项目中的可执行格式化配置文件。
+`npm run package` 构建 macOS 应用并写到源码目录下的 `release/`；`npm run package:win` 构建 Windows x64 NSIS 安装器和便携版并写到 `release-win/`。可通过 `LUMA_OUTPUT_DIR` 指定其他输出目录。Windows 目标在 macOS 上需要 Wine 才能本地生成 NSIS，仓库中的 GitHub Actions 会在 Windows 11 runner 上自动构建并上传构建产物。所有依赖版本已锁定，应用运行时不加载项目中的可执行格式化配置文件。
 
 主要开源组件：[Electron](https://www.electronjs.org/docs/latest/tutorial/security)、[Monaco Editor](https://github.com/microsoft/monaco-editor)、[Prettier](https://prettier.io/docs/plugins)、[Marked](https://marked.js.org/)、[DOMPurify](https://github.com/cure53/DOMPurify)。组件许可证随应用依赖或源码包附带的第三方说明一起提供。

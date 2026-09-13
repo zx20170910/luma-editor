@@ -1,8 +1,11 @@
 node_modules/
 dist/
 release/
+release-win/
 .package-staging/
 .package-build/
+.package-staging-win/
+.windows-icon.ico
 *.log
 .DS_Store
 coverage/
