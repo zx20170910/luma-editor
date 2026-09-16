@@ -4,9 +4,9 @@
 
 ## 开始使用
 
-macOS 用户双击同目录下的 **Luma Editor.app**，也可以将它拖入「应用程序」文件夹。Windows 11 用户运行 `Luma-Editor-1.0.0-Setup-x64.exe`，按安装向导选择目录；没有管理员权限时可安装到当前用户目录。应用已包含运行环境，无须安装 Node.js。
+macOS 用户双击同目录下的 **Luma Editor.app**，也可以将它拖入「应用程序」文件夹。Windows 11 用户运行 `Luma-Editor-1.1.0-Setup-x64.exe`，按安装向导选择目录；没有管理员权限时可安装到当前用户目录。应用已包含运行环境，无须安装 Node.js。
 
-本次提供 macOS Apple 芯片（arm64）和 Windows 11（x64）构建。Windows 安装器使用 Electron 的 NSIS 用户级安装模式，另提供不写入系统的便携版 `Luma-Editor-1.0.0-Portable-x64.exe`。macOS 版本已在 Apple arm64 电脑上运行验证；Windows 构建由 GitHub Actions 在 `windows-latest` 生成，未进行代码签名，因此首次运行可能显示 SmartScreen 提示。
+本次提供 macOS Apple 芯片（arm64）和 Windows 11（x64）构建。Windows 安装器使用 Electron 的 NSIS 用户级安装模式，另提供不写入系统的便携版 `Luma-Editor-1.1.0-Portable-x64.exe`。macOS 版本已在 Apple arm64 电脑上运行验证；Windows 构建由 GitHub Actions 在 `windows-latest` 生成，未进行代码签名，因此首次运行可能显示 SmartScreen 提示。
 
 首次启动会打开两个可编辑示例：「欢迎.md」和「示例.ts」。它们属于本地草稿，按 ⌘ S 可以保存到你选择的位置。
 
