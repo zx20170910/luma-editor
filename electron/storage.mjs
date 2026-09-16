@@ -183,6 +183,7 @@ export function validateSession(value) {
     wordWrap: Boolean(source.wordWrap), minimap: source.minimap !== false,
     formatOnSave: Boolean(source.formatOnSave), theme: source.theme === 'light' ? 'light' : 'dark',
     preview: source.preview !== false, sidebar: source.sidebar !== false,
+    sidebarWidth: Math.min(420, Math.max(160, Number(source.sidebarWidth) || 220)),
   };
   let folder = null;
   if (value.folder) {

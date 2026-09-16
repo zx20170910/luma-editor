@@ -29,9 +29,10 @@ const button = (id: string, symbol: string, title: string, label = '') => `<butt
 
 $('app').innerHTML = `
   <header class="titlebar">
-    <div class="window-space"></div><div class="brand"><span class="brand-mark">L</span><span>Luma <b>Editor</b></span><span class="version">1.0</span></div>
+    <div class="window-space"></div><div class="brand"><span class="brand-mark">L</span><span>Luma <b>Editor</b></span><span class="version">1.1</span></div>
     <button id="top-search" class="top-search" title="快速打开 (⌘ P)">${icon('search', 13)}<span>搜索文件或跳转到…</span><kbd>⌘ P</kbd></button>
     <div class="window-context"><span class="local-dot"></span>本地工作区</div>
+    <div id="window-controls" class="window-controls" aria-label="窗口控制">${button('window-minimize','minus','最小化')}${button('window-maximize','square','最大化')}${button('window-close','x','关闭')}</div>
   </header>
   <div class="workspace">
     <nav class="activity-bar" aria-label="工具栏">
@@ -49,6 +50,7 @@ $('app').innerHTML = `
       <div id="file-tree" class="file-tree"></div>
       <div class="sidebar-footer"><span class="tiny-spark">✦</span><span>给想法，留一点空间。</span></div>
     </aside>
+    <div id="sidebar-splitter" class="sidebar-splitter" role="separator" aria-label="调整文件侧栏宽度" tabindex="0"></div>
     <main class="main-pane">
       <div class="tabbar"><div id="tabs" class="tabs" role="tablist" aria-label="打开的文件"></div>${button('tab-new','plus','新建文件 (⌘ N)')}</div>
       <div class="editor-toolbar"><div id="breadcrumbs" class="breadcrumbs"></div><div class="editor-actions">${button('wrap-button','wrap-text','切换自动换行')}${button('format-button','wand-sparkles','格式化文档 (⇧ ⌥ F)','格式化')}<span class="toolbar-separator"></span>${button('preview-button','panel-right','Markdown 预览 (⇧ ⌘ M)','预览')}</div></div>
@@ -65,7 +67,7 @@ $('app').innerHTML = `
   <div id="modal-root"></div>
 `;
 drawIcons();
-let preferences: Preferences = { fontSize: 13, tabSize: 2, wordWrap: true, minimap: true, formatOnSave: false, theme: 'dark', preview: true, sidebar: true };
+let preferences: Preferences = { fontSize: 13, tabSize: 2, wordWrap: true, minimap: true, formatOnSave: false, theme: 'dark', preview: true, sidebar: true, sidebarWidth: 220 };
 interface Tab extends SavedTab { model: monaco.editor.ITextModel; view: monaco.editor.ICodeEditorViewState | null; subscription: monaco.IDisposable; }
 const tabs: Tab[] = [];
 let activeId: string | null = null;
@@ -291,6 +293,8 @@ function applyPreferences() {
   const tab = activeTab(); const markdown = tab?.language === 'markdown'; const showPreview = !!tab && markdown && preferences.preview;
   document.documentElement.dataset.theme = preferences.theme;
   $('sidebar').hidden = !preferences.sidebar;
+  $('sidebar').style.width = `${preferences.sidebarWidth}px`;
+  $('sidebar-splitter').hidden = !preferences.sidebar;
   $('activity-files').classList.toggle('active', preferences.sidebar);
   $('content-area').classList.toggle('split', showPreview);
   $('source-pane').hidden = !tab; $('preview-pane').hidden = !showPreview; $('splitter').hidden = !showPreview; $('empty-state').hidden = !!tab;
@@ -386,6 +390,7 @@ const commandItems = (): PaletteItem[] => [
   { label: '切换明亮 / 深色主题', symbol: 'sun-moon', run: () => { preferences.theme = preferences.theme === 'dark' ? 'light' : 'dark'; applyPreferences(); schedulePreview(0); changed(); } },
   { label: '在 Finder 中显示', symbol: 'folder-symlink', run: async () => { const t=activeTab(); if(t?.path) await api.revealFile(t.path); else toast('请先保存文件。'); } },
   { label: '设置与格式化工具…', shortcut: '⌘ ,', symbol: 'settings-2', run: showSettings },
+  { label: '检查更新', symbol: 'download', run: () => checkUpdates(false) },
 ];
 function chooseLanguage() {
   const tab = activeTab(); if (!tab) return;
@@ -409,11 +414,35 @@ async function quickOpen() {
   try { await walk(currentFolder.path,0); if ($('palette-input') === input) { paletteItems = items; renderPalette(); } } catch (error) { report(error); }
 }
 function toggleSidebar() { preferences.sidebar = !preferences.sidebar; applyPreferences(); changed(); }
+let lastUpdate: import('../shared/contracts').UpdateInfo | null = null;
+async function checkUpdates(silent = false) {
+  try {
+    const info = await api.checkForUpdates(); lastUpdate = info;
+    if (!silent) {
+      if (info.updateAvailable) toast(`发现新版本 ${info.latestVersion}${info.asset ? '，可下载更新。' : '，请打开发布页下载。'}`);
+      else if (info.reason) toast(`检查更新失败：${info.reason}`, true);
+      else toast(`当前已是最新版本（${info.currentVersion}）。`);
+    }
+    const status = $('update-status');
+    if (status) status.textContent = info.updateAvailable ? `发现 ${info.latestVersion}（当前 ${info.currentVersion}）` : info.reason ? '检查失败，可稍后重试' : `已是最新版本 ${info.currentVersion}`;
+    const button = $('check-update') as HTMLButtonElement | null;
+    if (button) { button.textContent = info.updateAvailable ? (info.asset ? '下载并安装' : '打开发布页') : '检查更新'; button.disabled = false; }
+    return info;
+  } catch (error) { if (!silent) report(error); return null; }
+}
+async function installUpdate() {
+  const info = lastUpdate || await checkUpdates(false); if (!info?.updateAvailable) return;
+  if (!info.asset) { await api.openExternal(info.releaseUrl); return; }
+  const button = $('check-update') as HTMLButtonElement | null; if (button) { button.disabled = true; button.textContent = '正在下载…'; }
+  try { await api.downloadUpdate(info.asset.url, info.asset.name); toast('更新程序已下载并打开，请按安装向导完成升级。'); }
+  catch (error) { report(error); if (button) { button.disabled = false; button.textContent = '下载并安装'; } }
+}
 
 async function showSettings() {
   const seq = ++settingsSequence;
-  $('modal-root').innerHTML = `<div class="modal-overlay"><section class="settings-modal" role="dialog" aria-modal="true" aria-label="设置"><div class="settings-header"><div><span class="eyebrow">MAKE IT YOURS</span><h2>你的编辑习惯。</h2></div>${button('settings-close','x','关闭设置')}</div><div class="settings-scroll"><h3>编辑器</h3><div class="setting-row"><label for="font-size">字号 <small>找到舒适的阅读节奏</small></label><select id="font-size">${[11,12,13,14,15,16,18,20,22,24].map(n=>`<option ${preferences.fontSize===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="setting-row"><label for="tab-size">缩进宽度</label><select id="tab-size">${[2,4,8].map(n=>`<option value="${n}" ${preferences.tabSize===n?'selected':''}>${n} 个空格</option>`).join('')}</select></div>${(['wordWrap','minimap','formatOnSave'] as const).map((key,i)=>`<div class="setting-row"><label for="pref-${key}">${['自动换行','显示代码缩略图','保存时格式化'][i]}${key === 'formatOnSave' ? '<small>格式化失败时保留原内容并取消保存</small>' : ''}</label><input type="checkbox" role="switch" class="switch" id="pref-${key}" ${preferences[key]?'checked':''}></div>`).join('')}<div class="setting-row"><label for="theme-select">外观</label><select id="theme-select"><option value="dark" ${preferences.theme==='dark'?'selected':''}>石墨深色</option><option value="light" ${preferences.theme==='light'?'selected':''}>纸张浅色</option></select></div><h3 class="formatter-title">语言格式化 <span>本地处理</span></h3><p class="settings-note">常用语言开箱即用。其他语言可使用已安装的格式化工具，或在下方添加自定义工具。</p><div id="formatter-grid" class="formatter-grid"><span class="settings-note">正在检测本机格式化工具…</span></div><details class="custom-formatter"><summary>接入其他语言的格式化工具 ${icon('plus',14)}</summary><p class="settings-note">工具从标准输入读取文本，向标准输出返回结果。程序直接运行，不经过 Shell。<code>{filepath}</code> 代表临时文档副本。</p><div class="custom-fields"><label>语言 ID<input id="custom-language" placeholder="例如 python 或 kotlin" list="formatter-languages"><datalist id="formatter-languages">${languageList().map(l=>`<option value="${escapeHTML(l.id)}">${escapeHTML(l.label)}</option>`).join('')}</datalist></label><label>程序<input id="custom-command" placeholder="例如 /opt/homebrew/bin/ruff"></label><label>参数（JSON 数组）<input id="custom-args" placeholder='["format", "--stdin-filename", "{filepath}", "-"]'></label><button id="custom-save" class="primary">保存格式化工具</button></div><div id="custom-existing"></div></details><div class="about-luma"><span class="brand-mark">L</span><div>Luma Editor <small>1.0.0 · 为专注而设计</small></div><span>文件始终留在本机</span></div></div></section></div>`;
+  $('modal-root').innerHTML = `<div class="modal-overlay"><section class="settings-modal" role="dialog" aria-modal="true" aria-label="设置"><div class="settings-header"><div><span class="eyebrow">MAKE IT YOURS</span><h2>你的编辑习惯。</h2></div>${button('settings-close','x','关闭设置')}</div><div class="settings-scroll"><h3>编辑器</h3><div class="setting-row"><label for="font-size">字号 <small>找到舒适的阅读节奏</small></label><select id="font-size">${[11,12,13,14,15,16,18,20,22,24].map(n=>`<option ${preferences.fontSize===n?'selected':''}>${n}</option>`).join('')}</select></div><div class="setting-row"><label for="tab-size">缩进宽度</label><select id="tab-size">${[2,4,8].map(n=>`<option value="${n}" ${preferences.tabSize===n?'selected':''}>${n} 个空格</option>`).join('')}</select></div>${(['wordWrap','minimap','formatOnSave'] as const).map((key,i)=>`<div class="setting-row"><label for="pref-${key}">${['自动换行','显示代码缩略图','保存时格式化'][i]}${key === 'formatOnSave' ? '<small>格式化失败时保留原内容并取消保存</small>' : ''}</label><input type="checkbox" role="switch" class="switch" id="pref-${key}" ${preferences[key]?'checked':''}></div>`).join('')}<div class="setting-row"><label for="theme-select">外观</label><select id="theme-select"><option value="dark" ${preferences.theme==='dark'?'selected':''}>石墨深色</option><option value="light" ${preferences.theme==='light'?'selected':''}>纸张浅色</option></select></div><h3 class="formatter-title">更新 <span>GitHub Releases</span></h3><div class="update-row"><span id="update-status">正在检查更新…</span><button id="check-update" class="secondary">检查更新</button></div><h3 class="formatter-title">语言格式化 <span>本地处理</span></h3><p class="settings-note">常用语言开箱即用。其他语言可使用已安装的格式化工具，或在下方添加自定义工具。</p><div id="formatter-grid" class="formatter-grid"><span class="settings-note">正在检测本机格式化工具…</span></div><details class="custom-formatter"><summary>接入其他语言的格式化工具 ${icon('plus',14)}</summary><p class="settings-note">工具从标准输入读取文本，向标准输出返回结果。程序直接运行，不经过 Shell。<code>{filepath}</code> 代表临时文档副本。</p><div class="custom-fields"><label>语言 ID<input id="custom-language" placeholder="例如 python 或 kotlin" list="formatter-languages"><datalist id="formatter-languages">${languageList().map(l=>`<option value="${escapeHTML(l.id)}">${escapeHTML(l.label)}</option>`).join('')}</datalist></label><label>程序<input id="custom-command" placeholder="例如 /opt/homebrew/bin/ruff"></label><label>参数（JSON 数组）<input id="custom-args" placeholder='["format", "--stdin-filename", "{filepath}", "-"]'></label><button id="custom-save" class="primary">保存格式化工具</button></div><div id="custom-existing"></div></details><div class="about-luma"><span class="brand-mark">L</span><div>Luma Editor <small>1.1.0 · 为专注而设计</small></div><span>文件始终留在本机</span></div></div></section></div>`;
   $('settings-close').onclick = closeModal;
+  $('check-update').onclick = () => { if (lastUpdate?.updateAvailable) void installUpdate(); else void checkUpdates(false); };
   $('modal-root').querySelector('.modal-overlay')!.addEventListener('mousedown', e => { if (e.target === e.currentTarget) closeModal(); });
   ($('font-size') as HTMLSelectElement).onchange = () => { preferences.fontSize = Number(($('font-size') as HTMLSelectElement).value); applyPreferences(); changed(); };
   ($('tab-size') as HTMLSelectElement).onchange = () => { preferences.tabSize = Number(($('tab-size') as HTMLSelectElement).value); applyPreferences(); changed(); };
@@ -439,7 +468,7 @@ async function showSettings() {
     } catch (error) { report(error); }
   };
   drawIcons(); $('settings-close').focus();
-  try { external = await api.getExternalFormatters(); if (seq !== settingsSequence) return; renderExternal(); await refreshStatus(); } catch(error) { report(error); }
+  try { external = await api.getExternalFormatters(); if (seq !== settingsSequence) return; renderExternal(); await refreshStatus(); await checkUpdates(true); } catch(error) { report(error); }
 }
 
 function executeCommand(command: string) {
@@ -487,9 +516,21 @@ $('splitter').onpointerdown = e => { resizing = true; $('splitter').setPointerCa
 $('splitter').onpointermove = e => { if(!resizing)return; const rect=$('content-area').getBoundingClientRect(); const percent=Math.max(25,Math.min(75,100*(e.clientX-rect.left)/rect.width)); $('content-area').style.setProperty('--split',`${percent}%`); editor.layout(); };
 $('splitter').onpointerup = () => { resizing=false; document.body.classList.remove('resizing'); };
 $('splitter').onkeydown = e => { if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const old=parseFloat($('content-area').style.getPropertyValue('--split'))||50;$('content-area').style.setProperty('--split',`${Math.max(25,Math.min(75,old+(e.key==='ArrowLeft'?-5:5)))}%`);editor.layout();} };
+let resizingSidebar = false;
+const sidebarWidthFromPointer = (clientX: number) => Math.max(160, Math.min(420, Math.round(clientX - $('sidebar').getBoundingClientRect().left)));
+const finishSidebarResize = () => { resizingSidebar = false; document.body.classList.remove('resizing-sidebar'); };
+$('sidebar-splitter').onpointerdown = e => { resizingSidebar = true; ($('sidebar-splitter') as HTMLElement).setPointerCapture(e.pointerId); document.body.classList.add('resizing-sidebar'); e.preventDefault(); };
+$('sidebar-splitter').onpointermove = e => { if (!resizingSidebar) return; preferences.sidebarWidth = sidebarWidthFromPointer(e.clientX); applyPreferences(); changed(); };
+$('sidebar-splitter').onpointerup = finishSidebarResize;
+$('sidebar-splitter').onpointercancel = finishSidebarResize;
+$('sidebar-splitter').onkeydown = e => { if (['ArrowLeft','ArrowRight'].includes(e.key)) { e.preventDefault(); preferences.sidebarWidth = Math.max(160, Math.min(420, preferences.sidebarWidth + (e.key === 'ArrowLeft' ? -10 : 10))); applyPreferences(); changed(); } };
 
 async function start() {
   if (!api) { $('editor').innerHTML='<div class="runtime-message"><h2>请从 Luma Editor.app 打开</h2><p>本地文件编辑需要桌面应用环境。</p></div>'; return; }
+  document.body.classList.toggle('platform-win', api.platform === 'win32');
+  $('window-minimize').onclick = () => { void api.windowControl('minimize'); };
+  $('window-maximize').onclick = async () => { const maximized = await api.windowControl('toggle-maximize'); $('window-maximize').innerHTML = icon(maximized ? 'copy' : 'square'); drawIcons(); };
+  $('window-close').onclick = () => { void api.windowControl('close'); };
   api.onCommand(executeCommand); api.onOpenFiles(files => { if (ready) addFiles(files); else startupFiles.push(...files); }); api.onCloseRequested(closeWindow);
   try {
     const session = await api.loadSession();
@@ -510,6 +551,7 @@ async function start() {
     applyPreferences();renderTabs();renderOpenEditors();renderBreadcrumbs();renderTree();
     if(folder){try{expanded.add(folder.path);await loadDirectory(folder.path);renderTree();}catch(error){report(error);}}
     changed();
+    void checkUpdates(true);
   }catch(error){ready=true;report(error);newFile();renderTree();}
 }
 void start();

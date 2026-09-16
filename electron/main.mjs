@@ -1,5 +1,8 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron';
+import { createWriteStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FileAccess, MAX_FILE_BYTES, SessionStore, atomicWriteJSON, isWithin, readJSON, readTextFile, saveTextFile, validateSession } from './storage.mjs';
@@ -22,6 +25,8 @@ let rendererReady = false;
 let closeApproved = false;
 let dispatching = false;
 const pendingPaths = [];
+const UPDATE_REPOSITORY = 'https://api.github.com/repos/zx20170910/luma-editor/releases/latest';
+const GITHUB_HOSTS = new Set(['api.github.com', 'github.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com']);
 
 function sendCommand(command) { window?.webContents.send('luma:command', command); }
 function requireWindow() { if (!window || window.isDestroyed()) throw new Error('编辑器窗口尚未就绪。'); return window; }
@@ -60,6 +65,65 @@ async function dispatchPending() {
 function queuePaths(paths) {
   pendingPaths.push(...paths.filter(p => typeof p === 'string' && p && !p.startsWith('-')).map(p => path.resolve(p)));
   void dispatchPending();
+}
+
+function compareVersions(left, right) {
+  const parse = value => String(value || '').replace(/^v/i, '').split('.').map(part => Number.parseInt(part, 10) || 0).slice(0, 3);
+  const a = parse(left), b = parse(right);
+  for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1;
+  return 0;
+}
+function httpsRequest(url, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    if (target.protocol !== 'https:' || !GITHUB_HOSTS.has(target.hostname)) return reject(new Error('更新地址不是受信任的 GitHub 地址。'));
+    const request = https.get(target, { headers: { 'User-Agent': 'Luma-Editor-Updater', Accept: 'application/vnd.github+json' } }, response => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location && redirects < 5) {
+        response.resume(); httpsRequest(new URL(response.headers.location, target).href, redirects + 1).then(resolve, reject); return;
+      }
+      if (response.statusCode !== 200) { response.resume(); reject(new Error(`GitHub 更新服务返回 HTTP ${response.statusCode || 0}。`)); return; }
+      resolve(response);
+    });
+    request.setTimeout(15000, () => request.destroy(new Error('检查更新超时。')));
+    request.once('error', reject);
+  });
+}
+function preferredUpdateAsset(release) {
+  const assets = Array.isArray(release.assets) ? release.assets : [];
+  if (process.platform === 'win32') return assets.find(asset => asset.name === `Luma-Editor-${release.tag_name.replace(/^v/i, '')}-Setup-x64.exe`) || assets.find(asset => /Setup-x64\.exe$/i.test(asset.name)) || null;
+  if (process.platform === 'darwin') return assets.find(asset => /\.(dmg|zip)$/i.test(asset.name)) || null;
+  return null;
+}
+async function checkForUpdates() {
+  const currentVersion = app.getVersion();
+  try {
+    const response = await httpsRequest(UPDATE_REPOSITORY);
+    const payload = JSON.parse(await new Promise((resolve, reject) => { let body = ''; response.setEncoding('utf8'); response.on('data', chunk => { body += chunk; if (body.length > 2 * 1024 * 1024) reject(new Error('更新信息过大。')); }); response.on('end', () => resolve(body)); response.on('error', reject); }));
+    const latestVersion = typeof payload.tag_name === 'string' ? payload.tag_name.replace(/^v/i, '') : null;
+    const asset = preferredUpdateAsset(payload);
+    return { currentVersion, latestVersion, updateAvailable: Boolean(latestVersion && compareVersions(latestVersion, currentVersion) > 0), releaseUrl: typeof payload.html_url === 'string' ? payload.html_url : 'https://github.com/zx20170910/luma-editor/releases', releaseName: typeof payload.name === 'string' ? payload.name : `Luma Editor ${latestVersion || ''}`, publishedAt: typeof payload.published_at === 'string' ? payload.published_at : null, asset: asset ? { name: asset.name, url: asset.browser_download_url, size: Number(asset.size) || 0 } : null, platform: process.platform };
+  } catch (error) {
+    return { currentVersion, latestVersion: null, updateAvailable: false, releaseUrl: 'https://github.com/zx20170910/luma-editor/releases', releaseName: '', publishedAt: null, asset: null, platform: process.platform, reason: error instanceof Error ? error.message : String(error) };
+  }
+}
+async function downloadUpdate(url, fileName) {
+  const target = new URL(string(url, 2048));
+  if (target.protocol !== 'https:' || !GITHUB_HOSTS.has(target.hostname)) throw new Error('更新地址不是受信任的 GitHub 地址。');
+  const safeName = string(fileName, 200).replace(/[^a-zA-Z0-9._-]/g, '_');
+  if (!/\.(?:exe|dmg|zip)$/i.test(safeName)) throw new Error('更新文件类型不受支持。');
+  const destination = path.join(app.getPath('temp'), `luma-update-${randomUUID()}-${safeName}`);
+  const response = await httpsRequest(target.href);
+  const expected = Number(response.headers['content-length']) || 0;
+  if (expected > 350 * 1024 * 1024) { response.resume(); throw new Error('更新文件超过 350 MB。'); }
+  await new Promise((resolve, reject) => {
+    const output = createWriteStream(destination, { flags: 'wx' });
+    let bytes = 0;
+    response.on('data', chunk => { bytes += chunk.length; if (bytes > 350 * 1024 * 1024) response.destroy(new Error('更新文件超过 350 MB。')); });
+    response.once('error', reject); output.once('error', reject); output.once('finish', resolve); response.pipe(output);
+  }).catch(async error => { await fs.rm(destination, { force: true }); throw error; });
+  const launchError = await shell.openPath(destination);
+  if (launchError) { await fs.rm(destination, { force: true }); throw new Error(`无法打开更新程序：${launchError}`); }
+  return { path: destination, name: safeName };
 }
 
 async function saveFile(request) {
@@ -183,6 +247,15 @@ function setupIPC() {
     await shell.openExternal(url.href);
   });
   handle('reveal-file', async filePath => shell.showItemInFolder(await access.assert(string(filePath))));
+  handle('window-control', async command => {
+    const current = requireWindow();
+    if (!['minimize', 'toggle-maximize', 'close'].includes(command)) throw new Error('无效的窗口操作。');
+    if (command === 'minimize') { current.minimize(); return false; }
+    if (command === 'toggle-maximize') { if (current.isMaximized()) current.unmaximize(); else current.maximize(); return current.isMaximized(); }
+    current.close(); return false;
+  });
+  handle('check-for-updates', checkForUpdates);
+  handle('download-update', downloadUpdate);
   ipcMain.on('luma:set-dirty', (event, value) => { try { verifySender(event); if (typeof value === 'boolean') window.setDocumentEdited(value); } catch {} });
   ipcMain.on('luma:respond-to-close', async event => {
     try {
@@ -210,7 +283,8 @@ function installMenu() {
 async function createWindow() {
   rendererReady = false;
   closeApproved = false;
-  window = new BrowserWindow({ width: 1440, height: 920, minWidth: 900, minHeight: 600, title: 'Luma Editor', backgroundColor: '#111419', show: false,
+  window = new BrowserWindow({ width: 1440, height: 920, minWidth: 900, minHeight: 600, title: 'Luma Editor', backgroundColor: '#171b22', show: false,
+    ...(process.platform === 'win32' ? { frame: false } : {}),
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 18 } } : {}),
     webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, allowRunningInsecureContent: false },
   });

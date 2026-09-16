@@ -65,7 +65,7 @@ Vue 默认使用 HTML 高亮和 Vue 格式化；JSX/TSX 使用相应的 JavaScri
 
 ## 文件、草稿与预览
 
-文档不会上传服务器。应用不内置遥测、远程代码执行、依赖自动安装或自动更新。Windows 用户数据保存在 `%APPDATA%\\Luma Editor\\`，macOS 用户数据保存在 `~/Library/Application Support/Luma Editor/`。
+文档不会上传服务器。应用不内置遥测、远程代码执行或依赖自动安装。启动时会从 GitHub Releases 检查新版本；在「设置 → 更新」中可以手动检查并下载当前系统的安装包。Windows 下载并运行用户级 Setup 安装器，macOS 下载 ZIP 后替换应用。Windows 用户数据保存在 `%APPDATA%\\Luma Editor\\`，macOS 用户数据保存在 `~/Library/Application Support/Luma Editor/`。
 
 保存使用同目录临时文件替换，并保留现有文件权限和 UTF-8 BOM。检测到磁盘文件被其他程序修改或删除时，需要明确选择是否覆盖。
 
@@ -74,6 +74,15 @@ Vue 默认使用 HTML 高亮和 Vue 格式化；JSX/TSX 使用相应的 JavaScri
 Markdown 支持标题、表格、任务列表、代码块、引用和本地栅格图片。预览会过滤脚本及危险 HTML；本地图片必须位于 Markdown 文件同目录或其子目录中。远程图片不会自动下载，网页链接点击后由系统浏览器打开。当前不包含 Mermaid、数学公式或 Markdown 所见即所得富文本编辑。
 
 当前边界：单个文本文件最多 **12 MB**，格式化输入最多 **10 MB**，最多同时打开 **50 个标签页**；格式化工具最长运行 **10 秒**。只接受有效 UTF-8（支持 BOM），其他编码应先转换。项目文件搜索最多扫描约 4,000 个目录项、12 层目录；跳过 `.git`、`node_modules` 和符号链接。
+
+## 版本、下载与变更记录
+
+| 版本 | Windows 11 x64 | macOS Apple 芯片 arm64 | 变更说明 |
+| --- | --- | --- | --- |
+| [v1.1.0](https://github.com/zx20170910/luma-editor/releases/tag/v1.1.0) | [Setup](https://github.com/zx20170910/luma-editor/releases/download/v1.1.0/Luma-Editor-1.1.0-Setup-x64.exe) · [Portable](https://github.com/zx20170910/luma-editor/releases/download/v1.1.0/Luma-Editor-1.1.0-Portable-x64.exe) | [ZIP](https://github.com/zx20170910/luma-editor/releases/download/v1.1.0/Luma-Editor-1.1.0-macOS-arm64.zip) | 修复侧栏拖拽宽度、移除 Windows 原生白边；增加 GitHub 更新检查和下载；补充跨平台发布记录。 |
+| [v1.0.0](https://github.com/zx20170910/luma-editor/releases/tag/v1.0.0) | [Setup](https://github.com/zx20170910/luma-editor/releases/download/v1.0.0/Luma-Editor-1.0.0-Setup-x64.exe) · [Portable](https://github.com/zx20170910/luma-editor/releases/download/v1.0.0/Luma-Editor-1.0.0-Portable-x64.exe) | [Actions 构建记录](https://github.com/zx20170910/luma-editor/actions/runs/34734549373) | 首个公开版本：多标签、Markdown 实时预览、多语言格式化、本地草稿恢复。 |
+
+更新检查只比较正式语义化版本号；没有匹配当前系统的安装包时会打开 Release 页面。安装包未签名，Windows 首次运行可能出现 SmartScreen 提示。
 
 ## 源码与构建
 

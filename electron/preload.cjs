@@ -7,6 +7,7 @@ const subscribe = (channel, callback) => {
   return () => ipcRenderer.removeListener(`luma:${channel}`, listener);
 };
 contextBridge.exposeInMainWorld('luma', {
+  platform: process.platform,
   openFiles: () => invoke('open-files'),
   openFolder: () => invoke('open-folder'),
   readFile: path => invoke('read-file', path),
@@ -22,6 +23,9 @@ contextBridge.exposeInMainWorld('luma', {
   readAsset: (path, documentPath) => invoke('read-asset', path, documentPath),
   openExternal: url => invoke('open-external', url),
   revealFile: path => invoke('reveal-file', path),
+  windowControl: command => invoke('window-control', command),
+  checkForUpdates: () => invoke('check-for-updates'),
+  downloadUpdate: (url, fileName) => invoke('download-update', url, fileName),
   setDirty: value => ipcRenderer.send('luma:set-dirty', value),
   respondToClose: () => ipcRenderer.send('luma:respond-to-close'),
   onCommand: callback => subscribe('command', callback),

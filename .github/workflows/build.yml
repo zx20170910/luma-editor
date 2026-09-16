@@ -40,7 +40,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run package
-      - run: ditto -c -k --sequesterRsrc --keepParent "release/Luma Editor.app" "release/Luma-Editor-macOS-arm64.zip"
+      - name: Create versioned macOS archive
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          ditto -c -k --sequesterRsrc --keepParent "release/Luma Editor.app" "release/Luma-Editor-${VERSION}-macOS-arm64.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: luma-editor-macos-arm64
