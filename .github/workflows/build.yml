@@ -48,6 +48,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: luma-editor-macos-arm64
-          path: release/Luma-Editor-macOS-arm64.zip
+          path: release/Luma-Editor-*-macOS-arm64.zip
           if-no-files-found: error
           retention-days: 30
