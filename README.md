@@ -4,9 +4,9 @@
 
 ## 开始使用
 
-macOS 用户双击同目录下的 **Luma Editor.app**，也可以将它拖入「应用程序」文件夹。Windows 11 用户运行 `Luma-Editor-1.1.1-Setup-x64.exe`，按安装向导选择目录；没有管理员权限时可安装到当前用户目录。应用已包含运行环境，无须安装 Node.js。
+macOS 用户双击同目录下的 **Luma Editor.app**，也可以将它拖入「应用程序」文件夹。Windows 11 用户运行 `Luma-Editor-1.2.0-Setup-x64.exe`，按安装向导选择目录；没有管理员权限时可安装到当前用户目录。应用已包含运行环境，无须安装 Node.js。
 
-本次提供 macOS Apple 芯片（arm64）和 Windows 11（x64）构建。Windows 安装器使用 Electron 的 NSIS 用户级安装模式，另提供不写入系统的便携版 `Luma-Editor-1.1.1-Portable-x64.exe`。macOS 包已加入完整的 ad-hoc bundle 签名并在 Apple arm64 电脑上验证；由于没有 Apple Developer ID 公证，首次打开仍可能需要在 Finder 中右键选择「打开」。Windows 构建由 GitHub Actions 在 `windows-latest` 生成，未进行代码签名，因此首次运行可能显示 SmartScreen 提示。
+本次提供 macOS Apple 芯片（arm64）和 Windows 11（x64）构建。Windows 安装器使用 Electron 的 NSIS 用户级安装模式，另提供不写入系统的便携版 `Luma-Editor-1.2.0-Portable-x64.exe`。macOS 包已加入完整的 ad-hoc bundle 签名并在 Apple arm64 电脑上验证；由于没有 Apple Developer ID 公证，首次打开仍可能需要在 Finder 中右键选择「打开」。Windows 构建由 GitHub Actions 在 `windows-latest` 生成，未进行代码签名，因此首次运行可能显示 SmartScreen 提示。
 
 首次启动会打开两个可编辑示例：「欢迎.md」和「示例.ts」。它们属于本地草稿，按 ⌘ S 可以保存到你选择的位置。
 
@@ -80,10 +80,11 @@ Markdown 支持标题、表格、任务列表、代码块、引用和本地栅�
 
 ## 版本、下载与变更记录
 
-当前工作区版本为 1.2.0，发布包会在 GitHub Actions 完成跨平台构建后附加到对应 Release。
+当前工作区版本为 1.2.0；Windows 11 与 macOS arm64 安装包已附加到 v1.2.0 Release。
 
 | 版本 | Windows 11 x64 | macOS Apple 芯片 arm64 | 变更说明 |
 | --- | --- | --- | --- |
+| [v1.2.0](https://github.com/zx20170910/luma-editor/releases/tag/v1.2.0) | [Setup](https://github.com/zx20170910/luma-editor/releases/download/v1.2.0/Luma-Editor-1.2.0-Setup-x64.exe) · [Portable](https://github.com/zx20170910/luma-editor/releases/download/v1.2.0/Luma-Editor-1.2.0-Portable-x64.exe) | [ZIP](https://github.com/zx20170910/luma-editor/releases/download/v1.2.0/Luma-Editor-1.2.0-macOS-arm64.zip) | 页签拖拽/键盘排序并持久化；粘贴代码自动识别语言并格式化；修复跨平台窗口与更新体验。 |
 | [v1.1.1](https://github.com/zx20170910/luma-editor/releases/tag/v1.1.1) | [Setup](https://github.com/zx20170910/luma-editor/releases/download/v1.1.1/Luma-Editor-1.1.1-Setup-x64.exe) · [Portable](https://github.com/zx20170910/luma-editor/releases/download/v1.1.1/Luma-Editor-1.1.1-Portable-x64.exe) | [ZIP](https://github.com/zx20170910/luma-editor/releases/download/v1.1.1/Luma-Editor-1.1.1-macOS-arm64.zip) | 修复 macOS 应用 bundle 签名导致的“已损坏”提示；同步 Windows 11 安装包。 |
 | [v1.1.0](https://github.com/zx20170910/luma-editor/releases/tag/v1.1.0) | [Setup](https://github.com/zx20170910/luma-editor/releases/download/v1.1.0/Luma-Editor-1.1.0-Setup-x64.exe) · [Portable](https://github.com/zx20170910/luma-editor/releases/download/v1.1.0/Luma-Editor-1.1.0-Portable-x64.exe) | [ZIP](https://github.com/zx20170910/luma-editor/releases/download/v1.1.0/Luma-Editor-1.1.0-macOS-arm64.zip) | 修复侧栏拖拽宽度、移除 Windows 原生白边；增加 GitHub 更新检查和下载；补充跨平台发布记录。 |
 | [v1.0.0](https://github.com/zx20170910/luma-editor/releases/tag/v1.0.0) | [Setup](https://github.com/zx20170910/luma-editor/releases/download/v1.0.0/Luma-Editor-1.0.0-Setup-x64.exe) · [Portable](https://github.com/zx20170910/luma-editor/releases/download/v1.0.0/Luma-Editor-1.0.0-Portable-x64.exe) | [Actions 构建记录](https://github.com/zx20170910/luma-editor/actions/runs/34734549373) | 首个公开版本：多标签、Markdown 实时预览、多语言格式化、本地草稿恢复。 |
