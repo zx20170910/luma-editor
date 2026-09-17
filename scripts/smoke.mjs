@@ -13,10 +13,12 @@ const codePath = path.join(fixtures, 'nested', 'format.ts');
 const cleanPath = path.join(fixtures, 'clean.md');
 const draftPath = path.join(fixtures, 'draft.md');
 const invalidPath = path.join(fixtures, 'invalid.json');
+const pastePath = path.join(fixtures, 'paste.js');
 await fs.writeFile(codePath, 'const message={hello:"world",items:[1,2,3]};\n');
 await fs.writeFile(cleanPath, '# CLEAN ORIGINAL\n');
 await fs.writeFile(draftPath, '# DRAFT ORIGINAL\n');
 await fs.writeFile(invalidPath, '{ invalid: \n');
+await fs.writeFile(pastePath, '');
 const results = [];
 const errors = [];
 let app, page;
@@ -38,10 +40,10 @@ async function launch() {
   page.on('console', message => { if (message.type() === 'error') errors.push({ type: 'console', message: message.text() }); });
   await page.locator('#tabs .tab').first().waitFor();
   await app.evaluate(({ dialog }, p) => {
-    dialog.showOpenDialog = async (_window, options) => ({ canceled: false, filePaths: options.properties.includes('openDirectory') ? [p.fixtures] : [p.codePath, p.cleanPath, p.draftPath, p.invalidPath] });
+    dialog.showOpenDialog = async (_window, options) => ({ canceled: false, filePaths: options.properties.includes('openDirectory') ? [p.fixtures] : [p.codePath, p.cleanPath, p.draftPath, p.invalidPath, p.pastePath] });
     dialog.showSaveDialog = async () => ({ canceled: false, filePath: p.codePath });
     dialog.showMessageBox = async () => ({ response: 1 });
-  }, { fixtures, codePath, cleanPath, draftPath, invalidPath });
+  }, { fixtures, codePath, cleanPath, draftPath, invalidPath, pastePath });
 }
 async function command(name) {
   await page.locator('#activity-command').click();
@@ -81,9 +83,27 @@ try {
   assert.equal(await fs.readFile(codePath, 'utf8'), formatted);
   note('PASS actual format, Cmd+Z undo, Cmd+Shift+Z redo, and save to disk');
 
+  const beforeOrder = await page.locator('#tabs .tab').evaluateAll(nodes => nodes.map(node => node.textContent.trim()));
+  await page.locator('#tabs .tab').filter({ hasText: 'format.ts' }).dragTo(page.locator('#tabs .tab').filter({ hasText: 'clean.md' }));
+  const afterOrder = await page.locator('#tabs .tab').evaluateAll(nodes => nodes.map(node => node.textContent.trim()));
+  assert.notDeepEqual(afterOrder, beforeOrder);
+  await until(async () => {
+    const persisted = (await session()).tabs.map(tab => tab.name);
+    return JSON.stringify(persisted) === JSON.stringify(afterOrder);
+  }, 'tab order persisted');
+  note('PASS tabs can be dragged to reorder');
+
+  await selectTab('paste.js');
+  await page.locator('.monaco-editor').click({ position: { x: 240, y: 85 } });
+  await app.evaluate(({ clipboard }) => clipboard.writeText('const pasted={answer:42};'));
+  await page.keyboard.press('Meta+V');
+  await until(async () => (await tabContent('paste.js')).content.includes('const pasted = { answer: 42 };'), 'auto-formatted pasted snippet');
+  note('PASS pasted code is detected and formatted in place');
+
   await page.locator('#sidebar-folder').click();
   await page.locator('#file-tree [data-directory="true"]').filter({ hasText: 'nested' }).click();
   await page.locator('#file-tree .filename').getByText('format.ts', { exact: true }).waitFor();
+  await selectTab('format.ts');
   const second = 'const second={works:true};\n';
   await replaceText(second);
   await save();
