@@ -80,6 +80,8 @@ Markdown 支持标题、表格、任务列表、代码块、引用和本地栅�
 
 ## 版本、下载与变更记录
 
+当前工作区版本为 1.2.0，发布包会在 GitHub Actions 完成跨平台构建后附加到对应 Release。
+
 | 版本 | Windows 11 x64 | macOS Apple 芯片 arm64 | 变更说明 |
 | --- | --- | --- | --- |
 | [v1.1.1](https://github.com/zx20170910/luma-editor/releases/tag/v1.1.1) | [Setup](https://github.com/zx20170910/luma-editor/releases/download/v1.1.1/Luma-Editor-1.1.1-Setup-x64.exe) · [Portable](https://github.com/zx20170910/luma-editor/releases/download/v1.1.1/Luma-Editor-1.1.1-Portable-x64.exe) | [ZIP](https://github.com/zx20170910/luma-editor/releases/download/v1.1.1/Luma-Editor-1.1.1-macOS-arm64.zip) | 修复 macOS 应用 bundle 签名导致的“已损坏”提示；同步 Windows 11 安装包。 |
