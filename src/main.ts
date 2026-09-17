@@ -6,7 +6,7 @@ import htmlWorker from 'monaco-editor/language/html/html.worker.js?worker';
 import tsWorker from 'monaco-editor/language/typescript/ts.worker.js?worker';
 import { createIcons, icons } from 'lucide';
 import type { ExternalFormatter, FileData, FileNode, Preferences, SavedTab, Session } from '../shared/contracts';
-import { detectLanguage, languageLabel, languageList, formatLanguage } from './languages';
+import { detectContentLanguage, detectLanguage, languageLabel, languageList, formatLanguage } from './languages';
 import { markdownHTML } from './preview';
 import { welcome, sampleCode } from './samples';
 import './style.css';
@@ -122,6 +122,15 @@ const editor = monaco.editor.create($('editor'), {
 });
 editor.addAction({ id: 'luma-format', label: '格式化文档', keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF], contextMenuGroupId: '1_modification', run: () => formatCurrent() });
 editor.onDidChangeCursorSelection(updateStatus);
+editor.onDidPaste(event => {
+  const tab = activeTab();
+  if (!tab) return;
+  const pasted = tab.model.getValueInRange(event.range);
+  if (!shouldAutoFormatPaste(pasted)) return;
+  const version = tab.model.getVersionId();
+  const language = detectContentLanguage(pasted, event.languageId || formatLanguage(tab.language, tab.name));
+  void formatPastedRange(tab, event.range, pasted, language, version);
+});
 
 function toast(message: string, error = false) {
   clearTimeout(toastTimer); $('toast').textContent = message; $('toast').classList.toggle('error', error); $('toast').hidden = false;
@@ -194,6 +203,27 @@ async function formatCurrent() {
   working = true; $('format-button').classList.add('busy');
   try { await formatTab(tab); } catch (error) { report(error); } finally { working = false; $('format-button').classList.remove('busy'); }
 }
+function shouldAutoFormatPaste(content: string) {
+  const text = content.trim();
+  if (text.length < 2) return false;
+  return /\r?\n/.test(content) || /[{}[\];]|=>|^\s*(?:const|let|var|function|class|def|SELECT|FROM|import|export)\b/i.test(text);
+}
+async function formatPastedRange(tab: Tab, range: monaco.Range, pasted: string, language: string, version: number) {
+  try {
+    const result = await api.format({
+      content: pasted,
+      language: formatLanguage(language, tab.name),
+      filePath: tab.path || tab.name,
+      tabSize: preferences.tabSize,
+    });
+    if (tab.model.isDisposed() || tab.model.getVersionId() !== version) return;
+    if (result.content === pasted) return;
+    tab.model.pushStackElement();
+    tab.model.pushEditOperations([], [{ range, text: result.content }], () => null);
+    tab.model.pushStackElement();
+    toast(`已识别为 ${languageLabel(language)}，并自动格式化`);
+  } catch { /* Keep pasted text intact when the language has no formatter. */ }
+}
 const saveInProgress = new Set<string>();
 async function saveTab(tab: Tab, saveAs = false): Promise<boolean> {
   if (saveInProgress.has(tab.id)) return false;
@@ -248,12 +278,56 @@ async function closeWindow() {
   } catch (error) { report(error); } finally { closing = false; }
 }
 function fileIcon(language: string) { return language === 'markdown' ? 'file-text' : ['typescript','javascript'].includes(language) ? 'file-code-2' : language === 'json' ? 'braces' : 'file'; }
+let draggedTabId: string | null = null;
+function reorderTab(sourceId: string, targetId: string) {
+  if (sourceId === targetId) return;
+  const from = tabs.findIndex(tab => tab.id === sourceId);
+  const to = tabs.findIndex(tab => tab.id === targetId);
+  if (from < 0 || to < 0) return;
+  const [tab] = tabs.splice(from, 1);
+  tabs.splice(to, 0, tab);
+  renderTabs();
+  renderOpenEditors();
+  changed();
+}
 function renderTabs() {
   $('open-count').textContent = String(tabs.length);
-  $('tabs').innerHTML = tabs.map(t => `<div class="tab ${t.id === activeId ? 'selected' : ''}" role="tab" aria-selected="${t.id === activeId}" tabindex="0" data-id="${t.id}" title="${escapeHTML(t.path || t.name)}"><span class="file-icon ${t.language}">${icon(fileIcon(t.language),14)}</span><span>${escapeHTML(t.name)}</span><button class="tab-close ${isDirty(t) ? 'dirty' : ''}" title="关闭 ${escapeHTML(t.name)}" aria-label="关闭 ${escapeHTML(t.name)}" data-close="${t.id}">${isDirty(t) ? '<span class="dirty-dot"></span>' : icon('x',12)}</button></div>`).join('');
+  $('tabs').innerHTML = tabs.map(t => `<div class="tab ${t.id === activeId ? 'selected' : ''}" role="tab" aria-selected="${t.id === activeId}" tabindex="0" draggable="true" data-id="${t.id}" title="${escapeHTML(t.path || t.name)}"><span class="file-icon ${t.language}">${icon(fileIcon(t.language),14)}</span><span>${escapeHTML(t.name)}</span><button class="tab-close ${isDirty(t) ? 'dirty' : ''}" title="关闭 ${escapeHTML(t.name)}" aria-label="关闭 ${escapeHTML(t.name)}" data-close="${t.id}">${isDirty(t) ? '<span class="dirty-dot"></span>' : icon('x',12)}</button></div>`).join('');
   $('tabs').querySelectorAll<HTMLElement>('[data-id]').forEach(node => {
     node.onclick = e => { if (!(e.target as HTMLElement).closest('[data-close]')) switchTab(node.dataset.id!); };
-    node.onkeydown = e => { if (e.key === 'Enter') switchTab(node.dataset.id!); };
+    node.onkeydown = e => {
+      if (e.key === 'Enter') switchTab(node.dataset.id!);
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const index = tabs.findIndex(tab => tab.id === node.dataset.id);
+        const target = tabs[index + (e.key === 'ArrowLeft' ? -1 : 1)];
+        if (target) reorderTab(node.dataset.id!, target.id);
+      }
+    };
+    node.ondragstart = event => {
+      if ((event.target as HTMLElement).closest('[data-close]')) { event.preventDefault(); return; }
+      draggedTabId = node.dataset.id!;
+      node.classList.add('dragging');
+      event.dataTransfer?.setData('text/plain', draggedTabId);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    };
+    node.ondragover = event => {
+      if (!draggedTabId || draggedTabId === node.dataset.id) return;
+      event.preventDefault();
+      node.classList.add('drag-over');
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    };
+    node.ondragleave = () => node.classList.remove('drag-over');
+    node.ondrop = event => {
+      event.preventDefault();
+      const source = draggedTabId || event.dataTransfer?.getData('text/plain');
+      node.classList.remove('drag-over');
+      if (source) reorderTab(source, node.dataset.id!);
+    };
+    node.ondragend = () => {
+      draggedTabId = null;
+      $('tabs').querySelectorAll('.tab').forEach(tab => tab.classList.remove('dragging', 'drag-over'));
+    };
   });
   $('tabs').querySelectorAll<HTMLElement>('[data-close]').forEach(node => node.onclick = e => { e.stopPropagation(); void closeTab(node.dataset.close!); });
   drawIcons();
