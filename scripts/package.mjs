@@ -1,4 +1,5 @@
 import { packager } from '@electron/packager';
+import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,6 +57,11 @@ const bundled = await packager({ dir: staging, out: intermediate, name: 'Luma Ed
 });
 const destination = path.join(outputs, 'Luma Editor.app');
 const appPath = path.join(bundled[0], 'Luma Editor.app');
+if (process.platform === 'darwin') {
+  await new Promise((resolve, reject) => {
+    execFile('codesign', ['--deep', '--force', '--sign', '-', appPath], { stdio: 'inherit' }, error => error ? reject(error) : resolve());
+  });
+}
 const previous = path.join(outputs, '.Luma Editor.previous.app');
 await fs.rm(previous, { recursive: true, force: true });
 try { await fs.rename(destination, previous); } catch (error) { if (error.code !== 'ENOENT') throw error; }
