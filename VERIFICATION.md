@@ -35,3 +35,13 @@
 ```text
 c550ee229535ba4a939c2e924d3dc37467ad791b69cfd93a0b59e29ffa893544
 ```
+
+## v1.1.1 macOS 安装包复核
+
+针对 macOS Gatekeeper 显示“Luma Editor 已损坏”的问题，`scripts/package.mjs` 在 macOS 打包完成后递归执行 ad-hoc bundle 签名。当前本机重新生成的应用包通过 `codesign --verify --deep --strict`，并确认 `Contents/_CodeSignature/CodeResources` 已生成；ZIP 完整性检查通过，SHA-256 为：
+
+```text
+db7fd92ff1c548f58fb9552eb9200dfa4ea97c03c63fa245c93b1ad84dc90773  Luma-Editor-1.1.1-macOS-arm64.zip
+```
+
+`spctl` 仍可能拒绝未使用 Apple Developer ID 签名和公证的应用，因此首次打开时可在 Finder 中右键选择「打开」。
