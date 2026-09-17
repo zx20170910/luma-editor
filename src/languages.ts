@@ -24,3 +24,40 @@ export function formatLanguage(language: string, name: string) {
   if (language === 'html' && /\.vue$/i.test(name)) return 'vue';
   return language;
 }
+
+/**
+ * Guess a formatter language from a pasted snippet. This intentionally uses
+ * conservative, high-signal syntax checks and falls back to the active tab's
+ * language when a snippet is ambiguous.
+ */
+export function detectContentLanguage(content: string, fallback = 'plaintext'): string {
+  const text = content.trim();
+  if (!text) return fallback;
+
+  try {
+    if (/^[\[{]/.test(text)) {
+      JSON.parse(text);
+      return 'json';
+    }
+  } catch { /* Keep checking other languages for incomplete JSON snippets. */ }
+
+  if (/^<\?php\b/i.test(text)) return 'php';
+  if (/^<template\b/i.test(text)) return 'vue';
+  if (/^<!doctype\s+html\b|^<[a-z][\s\S]*>/i.test(text)) return 'html';
+  if (/^\s*(?:query|mutation|subscription|fragment)\s+\w+/i.test(text)) return 'graphql';
+  if (/^\s*(?:select|with|insert|update|delete|create|alter)\b[\s\S]*\b(?:from|into|table|set)\b/i.test(text)) return 'sql';
+  if (/^---\s*$|^[\w.-]+\s*:\s*[^:=]/m.test(text) && !/[{};]/.test(text)) return 'yaml';
+  if (/^#!.*\b(?:sh|bash|zsh)\b|^\s*set\s+-e\b/m.test(text)) return 'shell';
+  if (/^\s*#include\s*[<"]|\bstd::|\btemplate\s*</.test(text)) return 'cpp';
+  if (/\b(?:interface|type)\s+\w+|\b(?:as\s+const|implements)\b|:\s*(?:string|number|boolean)\b/.test(text)) return 'typescript';
+  if (/^\s*(?:package\s+\w+|func\s+\w+\s*\()/m.test(text)) return 'go';
+  if (/\b(?:fn|impl|trait|use)\s+\w+/.test(text)) return 'rust';
+  if (/\b(?:public\s+class|System\.out|@Override)\b/.test(text)) return 'java';
+  if (/\b(?:namespace|using\s+System;|Console\.WriteLine)\b/.test(text)) return 'csharp';
+  if (/\bimport\s+(?:Foundation|UIKit)\b|^\s*func\s+\w+\s*\(/m.test(text)) return 'swift';
+  if (/\b(?:const|let|var|function|import|export)\b|=>/.test(text)) return 'javascript';
+  if (/^\s*(?:def|class)\s+\w+.*:|^\s*from\s+\w+\s+import\b/m.test(text)) return 'python';
+  if (/[.#]?[a-z][\w-]*\s*\{[^}]*:[^}]+;/.test(text)) return 'css';
+  if (/^#{1,6}\s+|^```|^\s*[-*+]\s+\S+/m.test(text)) return 'markdown';
+  return fallback;
+}
