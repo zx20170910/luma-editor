@@ -55,8 +55,14 @@ export function detectContentLanguage(content: string, fallback = 'plaintext'): 
   if (/\b(?:public\s+class|System\.out|@Override)\b/.test(text)) return 'java';
   if (/\b(?:namespace|using\s+System;|Console\.WriteLine)\b/.test(text)) return 'csharp';
   if (/\bimport\s+(?:Foundation|UIKit)\b|^\s*func\s+\w+\s*\(/m.test(text)) return 'swift';
+  if (/\b(?:fun|data\s+class|sealed\s+class)\s+\w+|:\s*(?:String|Int|Boolean)\b/.test(text)) return 'kotlin';
+  if (/^\s*FROM\s+\S+\s*$|\b(?:RUN|COPY|CMD|ENTRYPOINT)\s+/m.test(text)) return 'dockerfile';
+  if (/^\s*(?:param\(|Write-Host|Get-ChildItem)\b|^#!.*powershell/im.test(text)) return 'powershell';
   if (/\b(?:const|let|var|function|import|export)\b|=>/.test(text)) return 'javascript';
   if (/^\s*(?:def|class)\s+\w+.*:|^\s*from\s+\w+\s+import\b/m.test(text)) return 'python';
+  if (/^\s*(?:module|class|def)\s+\w+|\brequire\s+['"]/m.test(text)) return 'ruby';
+  if (/^\s*local\s+\w+\s*=|^\s*function\s+\w+\s*\(/m.test(text)) return 'lua';
+  if (/^\s*(?:library\s*\(|[\w.]+\s*<-|function\s*\()/m.test(text)) return 'r';
   if (/[.#]?[a-z][\w-]*\s*\{[^}]*:[^}]+;/.test(text)) return 'css';
   if (/^#{1,6}\s+|^```|^\s*[-*+]\s+\S+/m.test(text)) return 'markdown';
   return fallback;
